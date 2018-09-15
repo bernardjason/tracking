@@ -1,0 +1,6 @@
+GET     /               org.bjason.tracking.project.controllers.ProjectApi.getAll
+GET     /:query/:by          org.bjason.tracking.project.controllers.ProjectApi.getBy(query:String,by:String)
+GET     /:project_id          org.bjason.tracking.project.controllers.ProjectApi.get(project_id:Long)
+POST    /               org.bjason.tracking.project.controllers.ProjectApi.insertupdate
+PUT     /               org.bjason.tracking.project.controllers.ProjectApi.insertupdate
+DELETE  /:project_id          org.bjason.tracking.project.controllers.ProjectApi.delete(project_id:Long)

@@ -1,0 +1,14 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+# Home page
+GET     /                   @controllers.Application.index
+POST     /                  @controllers.Application.login
+GET     /logout             @controllers.Application.logout
+GET      /assets/*file      @controllers.Assets.at(path="/public", file)
+
+#-> /tables/action org.bjason.actions.action.Routes
+-> /tables/project org.bjason.tracking.project.Routes
+-> /tables/user org.bjason.tracking.user.Routes
+-> /tables/recordwork org.bjason.tracking.recordwork.Routes

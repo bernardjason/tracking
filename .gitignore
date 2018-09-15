@@ -1,0 +1,12 @@
+logs
+target
+lite.db
+testlite.db
+/.idea
+/.idea_modules
+/.classpath
+/.project
+/.settings
+/RUNNING_PID
+/bin/
+/.cache-main

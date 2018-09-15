@@ -1,0 +1,7 @@
+exec sbt -Dplay.evolutions.enabled=false \
+	-Dslick.dbs.default.profile="slick.jdbc.PostgresProfile$" \
+	-Dorg.postgresql.Driver="org.postgresql.Driver" \
+	-DJDBC_DATABASE_URL="jdbc:postgresql://localhost/" \
+	-DJDBC_DATABASE_USERNAME=jasonb \
+	-DJDBC_DATABASE_PASSWORD=jasonb \
+$*

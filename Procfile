@@ -1,0 +1,1 @@
+web: target/universal/stage/bin/tracking -Dhttp.port=${PORT}  -Dslick.dbs.default.profile="slick.jdbc.PostgresProfile$" -Dorg.postgresql.Driver="org.postgresql.Driver"  -Dplay.evolutions.enabled=false -Dplay.evolutions.db.default.autoApply=false -Dplay.http.secret.key="qcyTaNFK?Az?IWRnWNXiLr6ctFg3GF90lATABG@5241abr5w1UdfniK@N"

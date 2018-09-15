@@ -1,0 +1,437 @@
+@(userForm: Form[org.bjason.tracking.user.tables.UserModel],
+projectForm:Form[org.bjason.tracking.project.tables.ProjectModel],
+recordworkForm:Form[org.bjason.tracking.recordwork.tables.RecordWorkModel],
+userModel:Option[org.bjason.tracking.user.tables.UserModel] )(implicit request: MessagesRequestHeader)
+
+@import helper._
+@import org.bjason.tracking.user.tables.UserModel
+
+@main("Welcome to Play") {
+
+<script>
+
+globalColumnSet['#recordworkDataTable'] = ["recordwork_id", "recordwork_user_id" , "recordwork_start_date", "recordwork_project_id","recordwork_effort"]
+globalNumericFieldSet['#recordworkDataTable'] = ["recordwork_id", "recordwork_user_id" , "recordwork_project_id","recordwork_effort"]
+
+globalOptions['#recordworkDataTable'] = ["addrow=disable"]
+globalRefresh['#recordworkDataTable'] = recordWorkPopulateTab
+
+globalColumnSet['#projectDataTable'] = ["project_id", "project_start_date", "project_end_date","project_code", "project_name"]
+globalNumericFieldSet['#projectDataTable'] = ["project_id"]
+globalOptionalFieldSet['#projectDataTable'] = [ "project_start_date", "project_end_date"]
+
+var dateList=new Array();
+var dateListHtml=new Array();
+var projectList;
+var projectHtml = new Array();
+var effortResults = new Array();
+
+
+createDatesForDropdowns();
+
+
+function getMonday(d) {
+  d = new Date(d);
+  var day = d.getDay(),
+      diff = d.getDate() - day + (day == 0 ? -6:1);
+  return new Date(d.setDate(diff));
+}
+
+function pad(num, size) {
+    var s = "000000000" + num;
+    return s.substr(s.length-size);
+}
+
+function formatDate(d) {
+    return d.getFullYear() +"-"+pad(d.getMonth()+1,2)+"-"+pad(d.getDate(),2);
+}
+
+function createDatesForDropdowns() {
+    var monday=getMonday(new Date());
+    dateList.push( formatDate(monday));
+    for(i = 1 ; i < 35 ; i++ ) {
+        var prev = new Date( monday.getTime() - i* 7 * 24 * 60 * 60 * 1000  );
+        dateList.push( formatDate(prev));
+    }
+    for(i in dateList) {
+        var d=dateList[i];
+        var o = "<option value='"+d+"'>"+d+"</option>";
+        dateListHtml.push(o);
+    }
+}
+
+function tallyEffort() {
+
+  effortResults = new Array();
+
+  $('#recordworkDataTable tr').each( function() {
+    var date =$( $(this).children().get(2)).find('select :selected').val();
+    var recordwork_effort=$( $(this).children().get(4) ).html() ;
+    if ( effortResults[date] != undefined ) {
+      effortResults[date] = effortResults[date]  + parseFloat(recordwork_effort);
+    } else {
+      effortResults[date] = parseFloat(recordwork_effort);
+    }
+  });
+}
+
+function calculateHoursForWeekAndDisplay() {
+
+  $('#myModal').on('shown.bs.modal', function (e) {
+
+    tallyEffort();
+    $('#weekWorkDataTable').empty();
+
+    var table = $('#weekWorkDataTable');
+    table.append( $('<thead class="fixed-thead">').html(
+      '<th class="tallyheader"><h3>date</h3></th>' +
+      '<th class="tallyheader"><h3>total</h3></th>') );
+
+    var body = $('<tbody class="fixed-tbody"/>');
+    for(i in effortResults) {
+      body.append( $('<tr class="fixed-tr"/>').append(
+        '<td class="fixed-td">' + i +'</td>'+
+        '<td class="fixed-td">' + effortResults[i] +'</td>'
+      ));
+    }
+    $('#weekWorkDataTable').append( body);
+  });
+}
+
+function login() {
+    var json = {};
+    var userSet = [ "user_name", "user_password" ]
+    for(var i in userSet ) {
+        var name = userSet[i];
+        var value = $('#'+name).val();
+        json[name] = value;
+    }
+    var csrf = $('input[name=csrfToken]').val()
+    $.ajax({
+       type : "POST",
+       headers: { 'Csrf-Token':csrf } ,
+       contentType : "application/json; charset=utf-8",
+       data : JSON.stringify(json),
+       url : '/',
+       success : function(json) {
+            location.reload();
+       },
+       error : function(response) {
+               alert("error " + response.statusText + ":"+ response.status+" - " +response.responseText)
+       }
+    });
+}
+
+
+function dropDownChanged(diss) {
+  $(diss).parent().parent().parent().addClass(changed);
+  $(diss).parent().parent().parent().find('#action').html('<a onClick="rollbackRow(this)" href="#"><span class="glyphicon glyphicon-refresh"></span></a>') ;
+}
+function DRAWrecordwork_project_id(x) {
+   var h = "<select onchange='dropDownChanged(this)' class='form-control defaultpicker' data-show-subtext='true' data-live-search='true' id='recordwork_project_id'>"
+
+   for(i=0 ; i < projectHtml.length ; i=i+2 ) {
+     if ( projectHtml[i] == x ) {
+       var selectIt = projectHtml[i+1].replace("option value","option selected='selected' value");
+     } else {
+       var selectIt=projectHtml[i+1];
+     }
+     h=h+selectIt;
+   }
+   h=h + "   </select>" ;
+
+   return h;
+}
+function GETrecordwork_project_id(x) {
+   return x.find('#recordwork_project_id').val();
+}
+function DRAWrecordwork_start_date(x) {
+   var h = "<select onchange='dropDownChanged(this)' class='form-control defaultpicker' data-show-subtext='false' data-live-search='false' id='recordwork_start_date'>"
+
+   for(i in dateListHtml ) {
+     if ( x == dateList[i] ) {
+       h=h+( dateListHtml[i].replace("option value","option selected='selected' value") );
+     } else {
+       h=h+(dateListHtml[i]);
+     }
+   }
+
+   h=h + "   </select>" ;
+   return h;
+}
+function GETrecordwork_start_date(x) {
+   return x.find('#recordwork_start_date').val();
+}
+
+
+function GETrecordwork_user_id(x) {
+   return '@userModel.map( _.user_id)'
+}
+function DRAWrecordwork_user_id(x) {
+   return '@userModel.map( _.user_handle)'
+}
+
+
+function getProjectsForDropDown(onSuccess) {
+
+   $.getJSON( "/tables/project", function( data, statusText, resObject ) {
+     $('#recordworkModal').find('#recordwork_project_id').empty();
+     $('#recordworkModal').find('#recordwork_project_id').selectpicker('refresh');
+
+     projectHtml = new Array();
+     projectList=resObject.responseJSON;
+     for(i=0 ; i < projectList.length ; i++ ) {
+       var id=projectList[i].project_id;
+       var name=projectList[i].project_name;
+       projectHtml.push(id,'<option value='+id+'>'+name+'</option>')
+     }
+
+     //$('#recordworkModal').find('#recordwork_project_id').append( projectHtml[i+1]);
+     for(i=0 ; i < projectHtml.length ; i=i+2 ) {
+       $('#recordworkModal').find('#recordwork_project_id').append( projectHtml[i+1]);
+     }
+     $('#recordworkModal').find('#recordwork_project_id').selectpicker('refresh');
+
+     onSuccess();
+   });
+}
+
+function recordWorkPopulateTab() {
+   getProjectsForDropDown(
+     function() {
+       buildHtmlTable('/tables/recordwork','/tables/recordwork/recordwork_user_id/@userModel.map(_.user_id)?sortBy=recordwork_start_date&direction=desc',
+         '#recordworkDataTable','#recordworkDataTableDiv','#recordworkModal'
+       );
+     }
+   );
+}
+
+
+$( document ).ready(function() {
+        $('#user_password').keypress(function(e) {
+            if (e.which == '13') {
+                login();
+            }
+        });
+ @userModel.map{ _ =>
+ buildHtmlTable('/tables/project','/tables/project','#projectDataTable','#projectDataTableDiv','#projectModal');
+ recordWorkPopulateTab();
+
+ $('#recordworkModal').find('#recordwork_start_date').empty();
+ $('#recordworkModal').find('#recordwork_start_date').selectpicker('refresh');
+ for(i in  dateListHtml ) {
+   $('#recordworkModal').find('#recordwork_start_date').append( dateListHtml[i]);
+ }
+ $('#recordworkModal').find('#recordwork_start_date').selectpicker('refresh');
+ }
+});
+
+
+</script>
+
+<nav class="navbar navbar-inverse">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/">Tracking</a>
+        </div>
+        <ul class="nav navbar-nav">
+            <li class="active"><a href="#">Home</a></li>
+            @if(userModel.isEmpty) {
+            } else {
+            <li><a href="#totalModal" data-toggle="modal" data-target="#myModal">Week totals</a></li>
+            }
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+            @if(userModel.isEmpty) {
+            } else {
+            <li><a href="/logout">Logout</a></li>
+            }
+        </ul>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    @if(userModel.isEmpty) {
+    <div class="panel panel-default">
+        <div class="panel-heading">Login ( demo user <b>bernard</b> password <b>jason</b> or user <b>tea</b> password
+            <b>mug</b> )
+        </div>
+        <div class="panel-body">
+            @form(routes.Application.index()) {
+
+            <div class="form-group">
+                <label for="user_name">User name</label>
+                <input type="text" class="form-control" id="user_name" autofocus>
+            </div>
+            <div class="form-group">
+                <label for="user_password">Password:</label>
+                <input type="password" class="form-control" id="user_password">
+            </div>
+
+            @CSRF.formField
+            <div class="buttons">
+                <button type="button" onClick="login()" class="btn btn-primary btn-default"
+                        data-dismiss="modal">Login
+                </button>
+            </div>
+            }
+        </div>
+    </div>
+    }
+
+    @if(userModel.nonEmpty) {
+
+    <div id="exTab2" class="container-fluid">
+        <ul class="nav nav-tabs">
+            <li class="active">
+                <a href="#weekWork" data-toggle="tab">Week work</a>
+            </li>
+            <li>
+                <a href="#projectTab" data-toggle="tab">Project codes</a>
+            </li>
+        </ul>
+
+        <div class="modal fade" id="myModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                        <h4 class="modal-title">Week totals</h4>
+                    </div>
+                    <div class="modal-body" id="" weekTotals>
+                        <div id="weekTotalTable">
+                            <div id="weekTotalTableDiv" style="padding-top:15px;">
+                                <table id="weekWorkDataTable" class="table table-bordered">
+                                </table>
+                            </div>
+                            <br/>
+                        </div>
+                        <script>calculateHoursForWeekAndDisplay('#recordworkDataTable')</script>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#" data-dismiss="modal" class="btn">Close</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="tab-content">
+
+
+            <div class="tab-pane active" id="weekWork">
+                <div id="recordworkTable">
+                    <div id="recordworkDataTableDiv" style="padding-top:15px;">
+                        <table id="recordworkDataTable" class="table table-bordered">
+                        </table>
+                    </div>
+
+
+                    <div id="recordworkModal" class="modal fade" role="dialog">
+                        <div class="modal-dialog modal-lg">
+
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                    <h4 class="modal-title">New entry</h4>
+                                </div>
+                                <div class="modal-body">
+                                    @form(routes.Application.index()) {
+
+                                    <input type="hidden" id="recordwork_user_id" value='@userModel.get.user_id'>
+
+
+                                    <dt><label>start date</label></dt>
+
+                                    <select class='form-control defaultpicker' data-show-subtext='true'
+                                            data-live-search='true' id='recordwork_start_date'>
+
+                                    </select>
+
+                                    <br/> <br/>
+                                    <dt><label>project</label></dt>
+                                    <select class='form-control defaultpicker' data-show-subtext='true'
+                                            data-live-search='true' id='recordwork_project_id'>
+                                    </select>
+                                    <br/> <br/> <br/>
+
+                                    @helper.inputText(recordworkForm("recordwork_effort") ,'type -> "number" )
+
+                                    <!---
+                                    $('#recordworkModal').find('select').selectpicker('val','');
+                                    -->
+                                    @CSRF.formField
+                                    <div class="buttons">
+                                        <button type="button"
+                                                onClick="$('#recordworkModal').find('select').selectpicker('refresh');formNew('/tables/recordwork?sortBy=recordwork_start_date&direction=desc','#recordworkDataTable','#recordworkDataTableDiv','#recordworkModal','recordwork_start_date recordwork_end_date')"
+                                                class="btn btn-primary"
+                                                data-dismiss="modal">Ok Commit
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close
+                                        </button>
+                                    </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="tab-pane" id="projectTab">
+
+                <div id="projectTable">
+                    <div id="projectDataTableDiv" style="padding-top:15px;">
+                        <table id="projectDataTable" class="table table-bordered">
+                        </table>
+                    </div>
+
+                    <div id="projectModal" class="modal fade" role="dialog">
+                        <div class="modal-dialog">
+
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                    <h4 class="modal-title">New entry</h4>
+                                </div>
+                                <div class="modal-body">
+                                    @form(routes.Application.index()) {
+
+                                    @helper.inputDate(projectForm("project_start_date") ,'_class -> "",
+                                    '_help -> "start date" )
+                                    @helper.inputDate(projectForm("project_end_date") ,'_class -> "",
+                                    '_help -> "end date" )
+                                    @helper.inputText(projectForm("project_code") ,'_class -> "",
+                                    '_help -> "code for project" )
+                                    @helper.inputText(projectForm("project_name") ,
+                                    '_help -> "name for project" )
+
+                                    @CSRF.formField
+                                    <div class="buttons">
+                                        <button type="button"
+                                                onClick="formNew('/tables/project','#projectDataTable','#projectDataTableDiv','#projectModal')"
+                                                class="btn btn-primary"
+                                                data-dismiss="modal">Ok Commit
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close
+                                        </button>
+                                    </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+
+    </div>
+</div>
+
+}
+
+}
+
